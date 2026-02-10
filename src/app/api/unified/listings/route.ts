@@ -17,30 +17,14 @@ export async function GET() {
         const items = await mlClient.getItemsBatch(itemIds);
         const mlListings = items.map(mapMLItemToListing);
 
-        // Calculate net payout using ML fee calculator API
-        const sampleItem = items[0];
-        const feeCache = new Map<number, number>();
+        // Calculate net payout for CBT (cross-border) Premium listings
+        // Formula: Net proceeds = Price - 10% selling fee - $7.37 fixed CBT/Full fee
+        const ML_CBT_SELLING_FEE_RATE = 0.10;
+        const ML_CBT_FIXED_FEE = 7.37;
 
-        if (sampleItem?.category_id && sampleItem?.listing_type_id) {
-          for (const listing of mlListings) {
-            try {
-              if (feeCache.has(listing.price)) {
-                listing.netPayout = Math.round((listing.price - feeCache.get(listing.price)!) * 100) / 100;
-                continue;
-              }
-              const feeResult = await mlClient.getListingFees(
-                listing.price,
-                sampleItem.category_id,
-                sampleItem.listing_type_id
-              );
-              if (feeResult.sale_fee_amount != null) {
-                feeCache.set(listing.price, feeResult.sale_fee_amount);
-                listing.netPayout = Math.round((listing.price - feeResult.sale_fee_amount) * 100) / 100;
-              }
-            } catch {
-              // Skip if fee calc fails for a listing
-            }
-          }
+        for (const listing of mlListings) {
+          const sellingFee = listing.price * ML_CBT_SELLING_FEE_RATE;
+          listing.netPayout = Math.round((listing.price - sellingFee - ML_CBT_FIXED_FEE) * 100) / 100;
         }
 
         listings.push(...mlListings);
