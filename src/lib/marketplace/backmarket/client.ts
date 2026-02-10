@@ -57,7 +57,7 @@ export class BackMarketClient {
     if (params?.page) searchParams.set("page", String(params.page));
 
     const qs = searchParams.toString();
-    return this.request<BMOrder[]>(`/orders${qs ? `?${qs}` : ""}`);
+    return this.request<BMOrdersResponse>(`/orders${qs ? `?${qs}` : ""}`);
   }
 
   async getOrder(orderId: string) {
@@ -78,22 +78,31 @@ export class BackMarketClient {
   }
 }
 
-// BM API types
+// BM API types (matches actual API response)
 export interface BMListingsResponse {
   count: number;
+  next: string | null;
+  previous: string | null;
   results: BMListing[];
 }
 
 export interface BMListing {
-  id: number;
+  id: string; // UUID
+  listing_id: number;
   title: string;
   sku: string;
-  price: number;
+  price: string; // string like "340.00"
   currency: string;
   quantity: number;
   state: number;
-  image_url?: string;
-  backmarket_id?: string;
+  grade: string;
+  publication_state: number;
+  backmarket_id: number;
+  product_id: string;
+  min_price: number | null;
+  max_price: number | null;
+  comment?: string;
+  warranty_delay?: number;
 }
 
 export interface BMListingDetail extends BMListing {
@@ -101,29 +110,51 @@ export interface BMListingDetail extends BMListing {
   category?: string;
 }
 
+export interface BMOrdersResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: BMOrder[];
+}
+
 export interface BMOrder {
-  id: number;
+  order_id: number;
   state: number;
   date_creation: string;
   date_modification: string;
+  date_shipping: string | null;
+  date_payment: string | null;
+  price: string; // string like "296.00"
+  shipping_price: string;
+  currency: string;
+  sales_taxes: string;
+  payment_method: string;
   orderlines: {
     id: number;
-    product_id: string;
+    product_id: number;
     listing_id: number;
-    label: string;
-    sku: string;
+    listing: string; // SKU/listing name
+    product: string; // product display name
     quantity: number;
-    price: number;
+    price: string; // string
+    shipping_price: string;
     currency: string;
+    state: number;
+    orderline_fee: string;
+    sales_taxes: string;
+    brand: string;
+    condition: number;
   }[];
   shipping_address?: {
     first_name: string;
     last_name: string;
     city: string;
+    state_or_province: string;
     country: string;
   };
   tracking_number?: string;
   tracking_url?: string;
+  shipper?: string;
 }
 
 export const bmClient = new BackMarketClient();

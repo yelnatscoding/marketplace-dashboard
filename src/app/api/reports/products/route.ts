@@ -24,9 +24,9 @@ export async function GET() {
 
   if (await isPlatformConnected("backmarket")) {
     try {
-      const bmOrders = await bmClient.getOrders();
+      const bmRes = await bmClient.getOrders();
       orders.push(
-        ...(bmOrders || []).map((o) => mapBMOrderToUnified(o, getCostForSku))
+        ...(bmRes.results || []).map((o) => mapBMOrderToUnified(o, getCostForSku))
       );
     } catch (e) {
       console.error("BM product report error:", e);

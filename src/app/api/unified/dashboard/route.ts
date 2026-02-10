@@ -54,8 +54,8 @@ export async function GET() {
       const listingsRes = await bmClient.getListings();
       kpis.totalListings += listingsRes.count || listingsRes.results?.length || 0;
 
-      const orders = await bmClient.getOrders();
-      const unified = (orders || []).map((o) =>
+      const ordersRes = await bmClient.getOrders();
+      const unified = (ordersRes.results || []).map((o) =>
         mapBMOrderToUnified(o, getCostForSku)
       );
 
