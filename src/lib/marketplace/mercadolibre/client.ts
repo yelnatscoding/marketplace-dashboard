@@ -141,6 +141,30 @@ export class MercadoLibreClient {
     );
   }
 
+  async searchAllOrders(params?: {
+    status?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }): Promise<{ results: MLOrder[]; total: number }> {
+    const all: MLOrder[] = [];
+    let offset = 0;
+    const limit = 50;
+
+    while (true) {
+      const res = await this.searchOrders({
+        ...params,
+        limit,
+        offset,
+      });
+      all.push(...res.results);
+
+      if (all.length >= res.paging.total || res.results.length < limit) {
+        return { results: all, total: res.paging.total };
+      }
+      offset += limit;
+    }
+  }
+
   async getOrder(orderId: string) {
     return this.request<MLOrder>(`/orders/${orderId}`);
   }

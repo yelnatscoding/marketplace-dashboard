@@ -27,7 +27,7 @@ export async function GET() {
       const itemIds = await mlClient.getItems();
       kpis.totalListings += itemIds.length;
 
-      const ordersRes = await mlClient.searchOrders({ limit: 20 });
+      const ordersRes = await mlClient.searchAllOrders();
       const orders = ordersRes.results.map((o) =>
         mapMLOrderToUnified(o, getCostForSku)
       );
@@ -41,7 +41,7 @@ export async function GET() {
         (sum, o) => sum + o.totalAmount,
         0
       );
-      kpis.ordersByPlatform.mercadolibre = ordersRes.paging.total;
+      kpis.ordersByPlatform.mercadolibre = ordersRes.total;
       allOrders.push(...orders);
     } catch (e) {
       console.error("ML dashboard error:", e);

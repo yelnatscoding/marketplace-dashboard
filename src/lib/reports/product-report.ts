@@ -54,14 +54,30 @@ function getSkuInfo(mpn: string): { size: string; connectivity: string; cost: nu
   return SKU_INFO[mpn] || null;
 }
 
+const UNSOLD_STATUSES = [
+  "cancelled",
+  "canceled",
+  "invalid",
+  "refunded",
+  "return in progress",
+];
+
+function isActiveSale(status: string): boolean {
+  const lower = status.toLowerCase();
+  return !UNSOLD_STATUSES.some((s) => lower.includes(s));
+}
+
 export function generateProductReport(
   orders: UnifiedOrder[],
   lastPayoutDate?: string
 ): ProductReportSummary {
+  // Only include sold/active orders
+  const activeOrders = orders.filter((o) => isActiveSale(o.status));
+
   // Group by first item's listing ID (product)
   const products: Record<string, ProductReportRow> = {};
 
-  for (const order of orders) {
+  for (const order of activeOrders) {
     const item = order.items[0];
     if (!item) continue;
 

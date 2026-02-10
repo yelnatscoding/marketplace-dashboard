@@ -19,6 +19,7 @@ export interface UnifiedListing {
   updatedAt?: string;
   minPrice?: number | null;
   maxPrice?: number | null;
+  netPayout?: number | null;
 }
 
 export interface UnifiedOrder {

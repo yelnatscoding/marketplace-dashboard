@@ -61,15 +61,24 @@ function KPICard({
   );
 }
 
-function RecentOrderRow({ order }: { order: UnifiedOrder }) {
-  const statusColors: Record<string, string> = {
-    Delivered: "bg-green-100 text-green-700",
-    "On its way": "bg-blue-100 text-blue-700",
-    Processing: "bg-yellow-100 text-yellow-700",
-    Cancelled: "bg-red-100 text-red-700",
-  };
+function formatDate(dateStr: string) {
+  try {
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return "";
+  }
+}
 
-  const colorClass = statusColors[order.status] || "bg-gray-100 text-gray-700";
+function RecentOrderRow({ order }: { order: UnifiedOrder }) {
+  const s = order.status.toLowerCase();
+  let colorClass = "bg-gray-100 text-gray-700";
+  if (s.includes("deliver") || s.includes("completed") || s.includes("closed")) colorClass = "bg-green-100 text-green-700";
+  else if (s.includes("ship") || s.includes("way") || s.includes("transit")) colorClass = "bg-blue-100 text-blue-700";
+  else if (s.includes("paid") || s.includes("pending") || s.includes("new") || s.includes("process")) colorClass = "bg-yellow-100 text-yellow-700";
+  else if (s.includes("cancel") || s.includes("refund")) colorClass = "bg-red-100 text-red-700";
 
   return (
     <Link
@@ -80,10 +89,12 @@ function RecentOrderRow({ order }: { order: UnifiedOrder }) {
         <PlatformBadge platform={order.platform} />
         <div className="min-w-0">
           <p className="text-sm font-medium truncate">
-            {order.orderNumber}
+            {order.items[0]?.title || order.orderNumber}
           </p>
           <p className="text-xs text-muted-foreground truncate">
-            {order.items[0]?.title || "Order"}
+            {formatDate(order.orderDate)}
+            {order.platform === "backmarket" && order.buyerName ? ` · ${order.buyerName}` : ""}
+            {" · "}{order.orderNumber}
           </p>
         </div>
       </div>
@@ -129,14 +140,14 @@ export default function DashboardPage() {
           title="Total Revenue"
           value={kpis ? formatCurrency(kpis.totalRevenue) : "$0"}
           icon={DollarSign}
-          description="All time"
+          description={kpis ? `ML ${formatCurrency(kpis.revenueByPlatform.mercadolibre)} · BM ${formatCurrency(kpis.revenueByPlatform.backmarket)}` : "All time"}
           loading={isLoading}
         />
         <KPICard
           title="Total Profit"
           value={kpis ? formatCurrency(kpis.totalProfit) : "$0"}
           icon={TrendingUp}
-          description="After costs & fees"
+          description={kpis ? `${kpis.ordersByPlatform.mercadolibre + kpis.ordersByPlatform.backmarket} orders · after costs & fees` : "After costs & fees"}
           loading={isLoading}
         />
       </div>

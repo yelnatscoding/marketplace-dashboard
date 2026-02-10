@@ -13,7 +13,7 @@ export async function GET() {
 
   if (await isPlatformConnected("mercadolibre")) {
     try {
-      const res = await mlClient.searchOrders({ limit: 50 });
+      const res = await mlClient.searchAllOrders();
       orders.push(
         ...res.results.map((o) => mapMLOrderToUnified(o, getCostForSku))
       );

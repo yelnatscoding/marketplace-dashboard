@@ -15,7 +15,33 @@ export async function GET() {
       const itemIds = await mlClient.getItems();
       if (itemIds.length > 0) {
         const items = await mlClient.getItemsBatch(itemIds);
-        listings.push(...items.map(mapMLItemToListing));
+        const mlListings = items.map(mapMLItemToListing);
+
+        // Calculate avg ML fee rate from recent orders to estimate net payout
+        let feeRate = 0;
+        try {
+          const ordersRes = await mlClient.searchOrders({ limit: 20 });
+          let totalAmount = 0;
+          let totalFees = 0;
+          for (const o of ordersRes.results) {
+            if (o.total_amount > 0) {
+              totalAmount += o.total_amount;
+              totalFees += o.payments?.reduce((s, p) => s + (p.marketplace_fee || 0), 0) || 0;
+            }
+          }
+          if (totalAmount > 0) feeRate = totalFees / totalAmount;
+        } catch {
+          // If we can't get orders, skip net payout estimation
+        }
+
+        // Apply net payout estimate to each listing
+        for (const listing of mlListings) {
+          listing.netPayout = feeRate > 0
+            ? Math.round((listing.price * (1 - feeRate)) * 100) / 100
+            : null;
+        }
+
+        listings.push(...mlListings);
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
