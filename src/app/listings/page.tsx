@@ -44,10 +44,12 @@ export default function ListingsPage() {
   const [editPrice, setEditPrice] = useState("");
   const [editStock, setEditStock] = useState("");
 
-  const { data: listings = [], isLoading } = useQuery<UnifiedListing[]>({
+  const { data: listingsData, isLoading } = useQuery<{ listings: UnifiedListing[]; errors: string[] }>({
     queryKey: ["listings"],
     queryFn: () => fetch("/api/unified/listings").then((r) => r.json()),
   });
+  const listings = listingsData?.listings || [];
+  const apiErrors = listingsData?.errors || [];
 
   const updatePrice = useMutation({
     mutationFn: async () => {
@@ -133,6 +135,14 @@ export default function ListingsPage() {
           </Link>
         }
       />
+
+      {apiErrors.length > 0 && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          {apiErrors.map((err, i) => (
+            <p key={i}>{err}</p>
+          ))}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-6">

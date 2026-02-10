@@ -28,6 +28,7 @@ export interface ProductReportRow {
   itemId: string;
   sku: string;
   mpn: string;
+  platform: string;
   size: string;
   connectivity: string;
   color: string;
@@ -87,6 +88,7 @@ export function generateProductReport(
         itemId,
         sku,
         mpn,
+        platform: order.platform,
         size,
         connectivity,
         color,

@@ -50,19 +50,49 @@ function getDateRange(period: Period): { from?: string; to?: string } {
   return {};
 }
 
+type PlatformFilter = "all" | "mercadolibre" | "backmarket";
+
 export default function SalesReportPage() {
   const [period, setPeriod] = useState<Period>("month");
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
 
   const range = getDateRange(period);
   const params = new URLSearchParams();
   if (range.from) params.set("from", range.from);
   if (range.to) params.set("to", range.to);
 
-  const { data: report, isLoading } = useQuery<SalesReportSummary>({
+  const { data: fullReport, isLoading } = useQuery<SalesReportSummary>({
     queryKey: ["sales-report", period],
     queryFn: () =>
       fetch(`/api/reports/sales?${params}`).then((r) => r.json()),
   });
+
+  // Apply platform filter client-side
+  const report = fullReport
+    ? platformFilter === "all"
+      ? fullReport
+      : {
+          ...fullReport,
+          rows: fullReport.rows.filter((r) => r.platform === platformFilter),
+          totalAmount: fullReport.rows
+            .filter((r) => r.platform === platformFilter)
+            .reduce((sum, r) => sum + r.basePrice - r.fees, 0),
+          productCost: fullReport.rows
+            .filter((r) => r.platform === platformFilter)
+            .reduce((sum, r) => sum + r.cost, 0),
+          profit: fullReport.rows
+            .filter((r) => r.platform === platformFilter)
+            .reduce((sum, r) => sum + r.margin, 0),
+          refundWithdrawal: fullReport.rows
+            .filter(
+              (r) =>
+                r.platform === platformFilter &&
+                (r.status.toLowerCase().includes("cancel") ||
+                  r.status.toLowerCase().includes("refund"))
+            )
+            .reduce((sum, r) => sum + r.basePrice, 0),
+        }
+    : undefined;
 
   function handleExport() {
     if (!report) return;
@@ -100,6 +130,19 @@ export default function SalesReportPage() {
         description={`${periodLabel[period]} sales breakdown`}
         actions={
           <div className="flex items-center gap-2">
+            <Select
+              value={platformFilter}
+              onValueChange={(v) => setPlatformFilter(v as PlatformFilter)}
+            >
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Platforms</SelectItem>
+                <SelectItem value="mercadolibre">Mercado Libre</SelectItem>
+                <SelectItem value="backmarket">BackMarket</SelectItem>
+              </SelectContent>
+            </Select>
             <Select
               value={period}
               onValueChange={(v) => setPeriod(v as Period)}

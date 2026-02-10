@@ -32,10 +32,12 @@ export default function OrdersPage() {
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const { data: orders = [], isLoading } = useQuery<UnifiedOrder[]>({
+  const { data: ordersData, isLoading } = useQuery<{ orders: UnifiedOrder[]; errors: string[] }>({
     queryKey: ["orders"],
     queryFn: () => fetch("/api/unified/orders").then((r) => r.json()),
   });
+  const orders = ordersData?.orders || [];
+  const apiErrors = ordersData?.errors || [];
 
   const filtered = orders.filter((o) => {
     const matchesSearch =
@@ -87,6 +89,14 @@ export default function OrdersPage() {
         title="Orders"
         description={`${orders.length} orders across all platforms`}
       />
+
+      {apiErrors.length > 0 && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          {apiErrors.map((err, i) => (
+            <p key={i}>{err}</p>
+          ))}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-6">

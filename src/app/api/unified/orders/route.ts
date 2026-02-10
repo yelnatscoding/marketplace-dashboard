@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
 
   const getCostForSku = await createCostLookup();
   const orders: UnifiedOrder[] = [];
+  const errors: string[] = [];
 
   if (await isPlatformConnected("mercadolibre")) {
     try {
@@ -30,6 +31,8 @@ export async function GET(req: NextRequest) {
         ...res.results.map((o) => mapMLOrderToUnified(o, getCostForSku))
       );
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      errors.push(`ML: ${msg}`);
       console.error("ML orders error:", e);
     }
   }
@@ -41,6 +44,8 @@ export async function GET(req: NextRequest) {
         ...(bmRes.results || []).map((o) => mapBMOrderToUnified(o, getCostForSku))
       );
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      errors.push(`BM: ${msg}`);
       console.error("BM orders error:", e);
     }
   }
@@ -51,5 +56,5 @@ export async function GET(req: NextRequest) {
       new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()
   );
 
-  return NextResponse.json(orders);
+  return NextResponse.json({ orders, errors });
 }

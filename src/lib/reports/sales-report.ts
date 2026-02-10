@@ -44,6 +44,9 @@ const SOLD_STATUSES = [
   "shipped",
   "paid",
   "validated",
+  "completed",
+  "new",
+  "pending",
 ];
 
 const UNSOLD_STATUSES = [

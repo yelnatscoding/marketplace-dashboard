@@ -8,6 +8,7 @@ import type { UnifiedListing } from "@/lib/marketplace/types";
 
 export async function GET() {
   const listings: UnifiedListing[] = [];
+  const errors: string[] = [];
 
   if (await isPlatformConnected("mercadolibre")) {
     try {
@@ -17,6 +18,8 @@ export async function GET() {
         listings.push(...items.map(mapMLItemToListing));
       }
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      errors.push(`ML: ${msg}`);
       console.error("ML listings error:", e);
     }
   }
@@ -26,9 +29,11 @@ export async function GET() {
       const res = await bmClient.getListings();
       listings.push(...(res.results || []).map(mapBMListingToUnified));
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      errors.push(`BM: ${msg}`);
       console.error("BM listings error:", e);
     }
   }
 
-  return NextResponse.json(listings);
+  return NextResponse.json({ listings, errors });
 }

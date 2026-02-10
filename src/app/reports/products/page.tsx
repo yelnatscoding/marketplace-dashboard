@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import {
   Card,
@@ -16,17 +17,47 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download, Package, DollarSign, Clock } from "lucide-react";
 import { formatCurrency } from "@/lib/utils/currency";
 import { exportToCsv } from "@/lib/utils/csv-export";
 import type { ProductReportSummary } from "@/lib/reports/product-report";
 
+type PlatformFilter = "all" | "mercadolibre" | "backmarket";
+
 export default function ProductReportPage() {
-  const { data: report, isLoading } = useQuery<ProductReportSummary>({
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
+
+  const { data: fullReport, isLoading } = useQuery<ProductReportSummary>({
     queryKey: ["product-report"],
     queryFn: () => fetch("/api/reports/products").then((r) => r.json()),
   });
+
+  // Apply platform filter client-side
+  const report = fullReport
+    ? platformFilter === "all"
+      ? fullReport
+      : (() => {
+          const products = fullReport.products.filter(
+            (p) => p.platform === platformFilter
+          );
+          return {
+            products,
+            totalSold: products.reduce((sum, p) => sum + p.sold, 0),
+            totalReceived: products.reduce((sum, p) => sum + p.received, 0),
+            totalPending: products.reduce((sum, p) => sum + p.pending, 0),
+            totalProfit: products.reduce((sum, p) => sum + p.profit, 0),
+            payouts: fullReport.payouts,
+          };
+        })()
+    : undefined;
 
   function handleExport() {
     if (!report) return;
@@ -54,15 +85,30 @@ export default function ProductReportPage() {
         title="Product Sales Report"
         description="Revenue breakdown by product"
         actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-            disabled={!report?.products.length}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export CSV
-          </Button>
+          <div className="flex items-center gap-2">
+            <Select
+              value={platformFilter}
+              onValueChange={(v) => setPlatformFilter(v as PlatformFilter)}
+            >
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Platforms</SelectItem>
+                <SelectItem value="mercadolibre">Mercado Libre</SelectItem>
+                <SelectItem value="backmarket">BackMarket</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={!report?.products.length}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
+          </div>
         }
       />
 
