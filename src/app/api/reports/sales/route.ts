@@ -1,0 +1,53 @@
+import { NextRequest, NextResponse } from "next/server";
+import { ensureDb } from "@/lib/db/migrate";
+import { isPlatformConnected, getCostForSku } from "@/lib/marketplace/provider";
+import { mlClient } from "@/lib/marketplace/mercadolibre/client";
+import { bmClient } from "@/lib/marketplace/backmarket/client";
+import { mapMLOrderToUnified } from "@/lib/marketplace/mercadolibre/mapper";
+import { mapBMOrderToUnified } from "@/lib/marketplace/backmarket/mapper";
+import { generateSalesReport } from "@/lib/reports/sales-report";
+import type { UnifiedOrder } from "@/lib/marketplace/types";
+
+ensureDb();
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+
+  const orders: UnifiedOrder[] = [];
+
+  if (isPlatformConnected("mercadolibre")) {
+    try {
+      const res = await mlClient.searchOrders({
+        dateFrom: from || undefined,
+        dateTo: to || undefined,
+        limit: 50,
+      });
+      orders.push(
+        ...res.results.map((o) => mapMLOrderToUnified(o, getCostForSku))
+      );
+    } catch (e) {
+      console.error("ML sales report error:", e);
+    }
+  }
+
+  if (isPlatformConnected("backmarket")) {
+    try {
+      const bmOrders = await bmClient.getOrders();
+      orders.push(
+        ...(bmOrders || []).map((o) => mapBMOrderToUnified(o, getCostForSku))
+      );
+    } catch (e) {
+      console.error("BM sales report error:", e);
+    }
+  }
+
+  const period = {
+    from: from ? new Date(from) : undefined,
+    to: to ? new Date(to) : undefined,
+  };
+
+  const report = generateSalesReport(orders, period);
+  return NextResponse.json(report);
+}
