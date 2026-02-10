@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, schema } from "@/lib/db";
-import { eq } from "drizzle-orm";
-import { ensureDb } from "@/lib/db/migrate";
-import { seedSkuCosts } from "@/lib/db/seed";
-
-ensureDb();
+import { getSkuCosts, setSkuCosts, getDefaultSkuCosts } from "@/lib/storage/cookies";
 
 export async function GET() {
-  const db = getDb();
-  const costs = db.select().from(schema.skuCostTable).all();
+  const costs = await getSkuCosts();
   return NextResponse.json(costs);
 }
 
@@ -20,24 +14,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "mpn and cost are required" }, { status: 400 });
   }
 
-  const db = getDb();
-  const existing = db
-    .select()
-    .from(schema.skuCostTable)
-    .where(eq(schema.skuCostTable.mpn, mpn))
-    .get();
+  const costs = await getSkuCosts();
+  const idx = costs.findIndex((c) => c.mpn === mpn);
 
-  if (existing) {
-    db.update(schema.skuCostTable)
-      .set({ cost, size, connectivity, description, updatedAt: Date.now() })
-      .where(eq(schema.skuCostTable.mpn, mpn))
-      .run();
+  if (idx >= 0) {
+    costs[idx] = { ...costs[idx], cost, size, connectivity, description };
   } else {
-    db.insert(schema.skuCostTable)
-      .values({ mpn, cost, size, connectivity, description })
-      .run();
+    const maxId = Math.max(0, ...costs.map((c) => c.id));
+    costs.push({
+      id: maxId + 1,
+      mpn,
+      cost,
+      size: size || null,
+      connectivity: connectivity || null,
+      description: description || null,
+    });
   }
 
+  await setSkuCosts(costs);
   return NextResponse.json({ success: true });
 }
 
@@ -49,17 +43,16 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
-  const db = getDb();
-  db.delete(schema.skuCostTable)
-    .where(eq(schema.skuCostTable.id, parseInt(id)))
-    .run();
+  const costs = await getSkuCosts();
+  const filtered = costs.filter((c) => c.id !== parseInt(id));
+  await setSkuCosts(filtered);
 
   return NextResponse.json({ success: true });
 }
 
-// Seed endpoint
+// Seed — reset to defaults
 export async function PUT() {
-  ensureDb();
-  const count = await seedSkuCosts();
-  return NextResponse.json({ seeded: count });
+  const defaults = getDefaultSkuCosts();
+  await setSkuCosts(defaults);
+  return NextResponse.json({ seeded: defaults.length });
 }

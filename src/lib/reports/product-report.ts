@@ -12,8 +12,16 @@ import {
   parseSizeFromTitle,
   parseConnectivityFromTitle,
 } from "@/lib/utils/sku";
-import { getDb, schema } from "@/lib/db";
-import { eq } from "drizzle-orm";
+
+// Static SKU info (matches seed data)
+const SKU_INFO: Record<string, { size: string; connectivity: string; cost: number }> = {
+  "4WWA3LW/A": { size: "42mm", connectivity: "GPS", cost: 244 },
+  "4WWF3LW/A": { size: "42mm", connectivity: "GPS", cost: 244 },
+  "4WWJ3LW/A": { size: "42mm", connectivity: "GPS", cost: 244 },
+  "4WXA3LW/A": { size: "42mm", connectivity: "Cell", cost: 274 },
+  "4WY03LW/A": { size: "46mm", connectivity: "Cell", cost: 290 },
+  "4WY33LW/A": { size: "46mm", connectivity: "Cell", cost: 290 },
+};
 
 export interface ProductReportRow {
   productName: string;
@@ -42,19 +50,7 @@ export interface ProductReportSummary {
 
 function getSkuInfo(mpn: string): { size: string; connectivity: string; cost: number } | null {
   if (!mpn) return null;
-  const db = getDb();
-  const row = db
-    .select()
-    .from(schema.skuCostTable)
-    .where(eq(schema.skuCostTable.mpn, mpn))
-    .get();
-
-  if (!row) return null;
-  return {
-    size: row.size || "",
-    connectivity: row.connectivity || "",
-    cost: row.cost,
-  };
+  return SKU_INFO[mpn] || null;
 }
 
 export function generateProductReport(
@@ -132,25 +128,12 @@ export function generateProductReport(
   // Sort by received descending
   productList.sort((a, b) => b.received - a.received);
 
-  // Get payouts from DB
-  const db = getDb();
-  const payoutRows = db
-    .select()
-    .from(schema.payoutRecords)
-    .where(eq(schema.payoutRecords.description, "payout"))
-    .all();
-
-  const payouts = payoutRows.map((r) => ({
-    date: r.date,
-    amount: r.netDebitAmount || 0,
-  }));
-
   return {
     products: productList,
     totalSold: productList.reduce((sum, p) => sum + p.sold, 0),
     totalReceived: productList.reduce((sum, p) => sum + p.received, 0),
     totalPending: productList.reduce((sum, p) => sum + p.pending, 0),
     totalProfit: productList.reduce((sum, p) => sum + p.profit, 0),
-    payouts,
+    payouts: [],
   };
 }

@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
-import { ensureDb } from "@/lib/db/migrate";
-import { isPlatformConnected, getCostForSku } from "@/lib/marketplace/provider";
+import { isPlatformConnected, createCostLookup } from "@/lib/marketplace/provider";
 import { mlClient } from "@/lib/marketplace/mercadolibre/client";
 import { bmClient } from "@/lib/marketplace/backmarket/client";
 import { mapMLItemToListing, mapMLOrderToUnified } from "@/lib/marketplace/mercadolibre/mapper";
 import { mapBMListingToUnified, mapBMOrderToUnified } from "@/lib/marketplace/backmarket/mapper";
 import type { DashboardKPIs, UnifiedOrder } from "@/lib/marketplace/types";
 
-ensureDb();
-
 export async function GET() {
+  const getCostForSku = await createCostLookup();
+
   const kpis: DashboardKPIs = {
     totalListings: 0,
     activeOrders: 0,
@@ -23,7 +22,7 @@ export async function GET() {
   const allOrders: UnifiedOrder[] = [];
 
   // Mercado Libre
-  if (isPlatformConnected("mercadolibre")) {
+  if (await isPlatformConnected("mercadolibre")) {
     try {
       const itemIds = await mlClient.getItems();
       kpis.totalListings += itemIds.length;
@@ -50,7 +49,7 @@ export async function GET() {
   }
 
   // BackMarket
-  if (isPlatformConnected("backmarket")) {
+  if (await isPlatformConnected("backmarket")) {
     try {
       const listingsRes = await bmClient.getListings();
       kpis.totalListings += listingsRes.count || listingsRes.results?.length || 0;

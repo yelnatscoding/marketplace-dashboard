@@ -1,23 +1,14 @@
-import { getDb, schema } from "@/lib/db";
-import { eq } from "drizzle-orm";
-import { decrypt } from "@/lib/utils/crypto";
+import { getBMCredentials } from "@/lib/storage/cookies";
 
 const BM_BASE_URL = "https://www.backmarket.com/ws";
 
 export class BackMarketClient {
   private async getToken(): Promise<string> {
-    const db = getDb();
-    const cred = db
-      .select()
-      .from(schema.apiCredentials)
-      .where(eq(schema.apiCredentials.platform, "backmarket"))
-      .get();
-
+    const cred = await getBMCredentials();
     if (!cred || !cred.accessToken) {
       throw new Error("BackMarket not connected");
     }
-
-    return decrypt(cred.accessToken);
+    return cred.accessToken;
   }
 
   async request<T>(path: string, options?: RequestInit): Promise<T> {

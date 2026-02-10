@@ -1,29 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, schema } from "@/lib/db";
-import { eq } from "drizzle-orm";
-import { encrypt } from "@/lib/utils/crypto";
-import { ensureDb } from "@/lib/db/migrate";
-
-ensureDb();
+import {
+  getMLCredentials,
+  getBMCredentials,
+  setBMCredentials,
+  deleteMLCredentials,
+  deleteBMCredentials,
+} from "@/lib/storage/cookies";
 
 export async function GET() {
-  const db = getDb();
-  const creds = db.select().from(schema.apiCredentials).all();
+  const mlCred = await getMLCredentials();
+  const bmCred = await getBMCredentials();
 
-  // Return without actual tokens, just connection status
-  const result = creds.map((c) => ({
-    id: c.id,
-    platform: c.platform,
-    isConnected: !!c.accessToken,
-    userId: c.userId,
-    tokenExpiresAt: c.tokenExpiresAt,
-    updatedAt: c.updatedAt,
-  }));
+  const result = [];
+
+  if (mlCred) {
+    result.push({
+      id: 1,
+      platform: "mercadolibre",
+      isConnected: true,
+      userId: mlCred.userId,
+      tokenExpiresAt: mlCred.tokenExpiresAt,
+      updatedAt: null,
+    });
+  }
+
+  if (bmCred) {
+    result.push({
+      id: 2,
+      platform: "backmarket",
+      isConnected: true,
+      userId: null,
+      tokenExpiresAt: bmCred.tokenExpiresAt,
+      updatedAt: null,
+    });
+  }
 
   return NextResponse.json(result);
 }
 
-// Save BackMarket token
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { platform, token } = body;
@@ -35,28 +49,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const db = getDb();
-  const existing = db
-    .select()
-    .from(schema.apiCredentials)
-    .where(eq(schema.apiCredentials.platform, "backmarket"))
-    .get();
-
-  const values = {
-    platform: "backmarket" as const,
-    accessToken: encrypt(token),
-    tokenExpiresAt: Date.now() + 90 * 24 * 60 * 60 * 1000, // 90 days
-    updatedAt: Date.now(),
-  };
-
-  if (existing) {
-    db.update(schema.apiCredentials)
-      .set(values)
-      .where(eq(schema.apiCredentials.platform, "backmarket"))
-      .run();
-  } else {
-    db.insert(schema.apiCredentials).values(values).run();
-  }
+  await setBMCredentials({
+    accessToken: token,
+    tokenExpiresAt: Date.now() + 90 * 24 * 60 * 60 * 1000,
+  });
 
   return NextResponse.json({ success: true });
 }
@@ -69,10 +65,11 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "platform is required" }, { status: 400 });
   }
 
-  const db = getDb();
-  db.delete(schema.apiCredentials)
-    .where(eq(schema.apiCredentials.platform, platform))
-    .run();
+  if (platform === "mercadolibre") {
+    await deleteMLCredentials();
+  } else if (platform === "backmarket") {
+    await deleteBMCredentials();
+  }
 
   return NextResponse.json({ success: true });
 }

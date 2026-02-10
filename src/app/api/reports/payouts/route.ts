@@ -1,27 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ensureDb } from "@/lib/db/migrate";
 import {
   parsePayoutCsv,
-  importPayoutRecords,
-  getPayoutSummary,
+  calculateSummaryFromRows,
 } from "@/lib/reports/payout-reconciliation";
-import { getDb, schema } from "@/lib/db";
 
-ensureDb();
-
-// Get payout reconciliation summary
+// Get empty summary (no persistent storage)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const stillHeld = parseFloat(searchParams.get("stillHeld") || "0");
 
-  const summary = getPayoutSummary(stillHeld);
-  return NextResponse.json(summary);
+  return NextResponse.json({
+    payouts: [],
+    totalPaidOut: 0,
+    metrics: {
+      grossSales: 0,
+      mpFees: 0,
+      shippingFees: 0,
+      netPayments: 0,
+      numPayments: 0,
+      refunds: 0,
+      disputeHeld: 0,
+      disputeReleased: 0,
+      disputeNet: 0,
+      totalCredits: 0,
+      totalDebits: 0,
+    },
+    stillHeld,
+    pendingPayout: 0,
+  });
 }
 
-// Upload and import payout CSV
+// Upload and process payout CSV (stateless — returns results directly)
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
+  const stillHeld = parseFloat(formData.get("stillHeld")?.toString() || "0");
 
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -37,18 +50,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const imported = importPayoutRecords(rows, file.name);
+  const summary = calculateSummaryFromRows(rows, stillHeld);
 
   return NextResponse.json({
     success: true,
-    imported,
     totalRows: rows.length,
+    ...summary,
   });
 }
 
-// Clear all payout records
+// No-op delete (no persistent storage)
 export async function DELETE() {
-  const db = getDb();
-  db.delete(schema.payoutRecords).run();
   return NextResponse.json({ success: true });
 }

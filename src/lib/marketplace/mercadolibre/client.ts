@@ -1,36 +1,22 @@
-import { getDb, schema } from "@/lib/db";
-import { eq } from "drizzle-orm";
-import { decrypt, encrypt } from "@/lib/utils/crypto";
+import { getMLCredentials, setMLCredentials } from "@/lib/storage/cookies";
 import { mlRateLimiter } from "@/lib/utils/rate-limiter";
 
 const ML_BASE_URL = "https://api.mercadolibre.com";
 
 export class MercadoLibreClient {
   private async getCredentials() {
-    const db = getDb();
-    const cred = db
-      .select()
-      .from(schema.apiCredentials)
-      .where(eq(schema.apiCredentials.platform, "mercadolibre"))
-      .get();
-
+    const cred = await getMLCredentials();
     if (!cred || !cred.accessToken) {
       throw new Error("Mercado Libre not connected");
     }
-
-    return {
-      accessToken: decrypt(cred.accessToken),
-      refreshToken: cred.refreshToken ? decrypt(cred.refreshToken) : null,
-      expiresAt: cred.tokenExpiresAt,
-      userId: cred.userId,
-    };
+    return cred;
   }
 
   private async refreshTokenIfNeeded() {
     const cred = await this.getCredentials();
 
     // Refresh if token expires within 10 minutes
-    if (cred.expiresAt && cred.expiresAt - Date.now() < 10 * 60 * 1000) {
+    if (cred.tokenExpiresAt && cred.tokenExpiresAt - Date.now() < 10 * 60 * 1000) {
       if (!cred.refreshToken) throw new Error("No refresh token available");
 
       const res = await fetch(`${ML_BASE_URL}/oauth/token`, {
@@ -49,16 +35,13 @@ export class MercadoLibreClient {
       }
 
       const data = await res.json();
-      const db = getDb();
-      db.update(schema.apiCredentials)
-        .set({
-          accessToken: encrypt(data.access_token),
-          refreshToken: encrypt(data.refresh_token),
-          tokenExpiresAt: Date.now() + data.expires_in * 1000,
-          updatedAt: Date.now(),
-        })
-        .where(eq(schema.apiCredentials.platform, "mercadolibre"))
-        .run();
+
+      await setMLCredentials({
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        tokenExpiresAt: Date.now() + data.expires_in * 1000,
+        userId: cred.userId,
+      });
 
       return data.access_token;
     }
@@ -107,7 +90,6 @@ export class MercadoLibreClient {
   }
 
   async getItemsBatch(itemIds: string[]) {
-    // ML supports multiget up to 20 items
     const batches: string[][] = [];
     for (let i = 0; i < itemIds.length; i += 20) {
       batches.push(itemIds.slice(i, i + 20));

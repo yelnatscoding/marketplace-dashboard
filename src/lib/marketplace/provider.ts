@@ -1,34 +1,29 @@
-import { getDb, schema } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { getMLCredentials, getBMCredentials, getSkuCosts } from "@/lib/storage/cookies";
 import { extractMpnFromSku } from "@/lib/utils/sku";
 
 /**
- * Get cost for a given SKU by looking up MPN in the DB.
+ * Create a synchronous cost lookup function by preloading SKU costs.
  */
-export function getCostForSku(sku: string): number {
-  const mpn = extractMpnFromSku(sku);
-  if (!mpn) return 0;
-
-  const db = getDb();
-  const row = db
-    .select()
-    .from(schema.skuCostTable)
-    .where(eq(schema.skuCostTable.mpn, mpn))
-    .get();
-
-  return row?.cost || 0;
+export async function createCostLookup(): Promise<(sku: string) => number> {
+  const costs = await getSkuCosts();
+  return (sku: string) => {
+    const mpn = extractMpnFromSku(sku);
+    if (!mpn) return 0;
+    return costs.find((s) => s.mpn === mpn)?.cost || 0;
+  };
 }
 
 /**
  * Check if a platform is connected.
  */
-export function isPlatformConnected(platform: string): boolean {
-  const db = getDb();
-  const cred = db
-    .select()
-    .from(schema.apiCredentials)
-    .where(eq(schema.apiCredentials.platform, platform))
-    .get();
-
-  return !!cred?.accessToken;
+export async function isPlatformConnected(platform: string): Promise<boolean> {
+  if (platform === "mercadolibre") {
+    const cred = await getMLCredentials();
+    return !!cred?.accessToken;
+  }
+  if (platform === "backmarket") {
+    const cred = await getBMCredentials();
+    return !!cred?.accessToken;
+  }
+  return false;
 }

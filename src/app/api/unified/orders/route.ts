@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ensureDb } from "@/lib/db/migrate";
-import { isPlatformConnected, getCostForSku } from "@/lib/marketplace/provider";
+import { isPlatformConnected, createCostLookup } from "@/lib/marketplace/provider";
 import { mlClient } from "@/lib/marketplace/mercadolibre/client";
 import { bmClient } from "@/lib/marketplace/backmarket/client";
 import { mapMLOrderToUnified } from "@/lib/marketplace/mercadolibre/mapper";
 import { mapBMOrderToUnified } from "@/lib/marketplace/backmarket/mapper";
 import type { UnifiedOrder } from "@/lib/marketplace/types";
-
-ensureDb();
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -17,9 +14,10 @@ export async function GET(req: NextRequest) {
   const limit = parseInt(searchParams.get("limit") || "50");
   const offset = parseInt(searchParams.get("offset") || "0");
 
+  const getCostForSku = await createCostLookup();
   const orders: UnifiedOrder[] = [];
 
-  if (isPlatformConnected("mercadolibre")) {
+  if (await isPlatformConnected("mercadolibre")) {
     try {
       const res = await mlClient.searchOrders({
         status,
@@ -36,7 +34,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  if (isPlatformConnected("backmarket")) {
+  if (await isPlatformConnected("backmarket")) {
     try {
       const bmOrders = await bmClient.getOrders();
       orders.push(

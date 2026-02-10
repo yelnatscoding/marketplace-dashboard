@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { bmClient } from "@/lib/marketplace/backmarket/client";
-import { ensureDb } from "@/lib/db/migrate";
-
-ensureDb();
 
 // Update tracking on a BM order
 export async function PUT(req: NextRequest) {

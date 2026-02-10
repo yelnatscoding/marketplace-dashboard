@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, schema } from "@/lib/db";
-import { eq } from "drizzle-orm";
 import { encrypt } from "@/lib/utils/crypto";
-import { ensureDb } from "@/lib/db/migrate";
-
-ensureDb();
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -50,32 +45,24 @@ export async function GET(req: NextRequest) {
   const tokenData = await tokenRes.json();
   const { access_token, refresh_token, expires_in, user_id } = tokenData;
 
-  const db = getDb();
-  const existing = db
-    .select()
-    .from(schema.apiCredentials)
-    .where(eq(schema.apiCredentials.platform, "mercadolibre"))
-    .get();
-
-  const values = {
-    platform: "mercadolibre" as const,
-    accessToken: encrypt(access_token),
-    refreshToken: encrypt(refresh_token),
+  const credentials = {
+    accessToken: access_token,
+    refreshToken: refresh_token,
     tokenExpiresAt: Date.now() + expires_in * 1000,
     userId: String(user_id),
-    updatedAt: Date.now(),
   };
 
-  if (existing) {
-    db.update(schema.apiCredentials)
-      .set(values)
-      .where(eq(schema.apiCredentials.platform, "mercadolibre"))
-      .run();
-  } else {
-    db.insert(schema.apiCredentials).values(values).run();
-  }
-
-  return NextResponse.redirect(
+  const response = NextResponse.redirect(
     new URL("/settings/credentials?success=ml_connected", req.url)
   );
+
+  response.cookies.set("ml_credentials", encrypt(JSON.stringify(credentials)), {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 180,
+    path: "/",
+  });
+
+  return response;
 }

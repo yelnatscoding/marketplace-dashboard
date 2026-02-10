@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { ensureDb } from "@/lib/db/migrate";
 import { isPlatformConnected } from "@/lib/marketplace/provider";
 import { mlClient } from "@/lib/marketplace/mercadolibre/client";
 import { bmClient } from "@/lib/marketplace/backmarket/client";
@@ -7,12 +6,10 @@ import { mapMLItemToListing } from "@/lib/marketplace/mercadolibre/mapper";
 import { mapBMListingToUnified } from "@/lib/marketplace/backmarket/mapper";
 import type { UnifiedListing } from "@/lib/marketplace/types";
 
-ensureDb();
-
 export async function GET() {
   const listings: UnifiedListing[] = [];
 
-  if (isPlatformConnected("mercadolibre")) {
+  if (await isPlatformConnected("mercadolibre")) {
     try {
       const itemIds = await mlClient.getItems();
       if (itemIds.length > 0) {
@@ -24,7 +21,7 @@ export async function GET() {
     }
   }
 
-  if (isPlatformConnected("backmarket")) {
+  if (await isPlatformConnected("backmarket")) {
     try {
       const res = await bmClient.getListings();
       listings.push(...(res.results || []).map(mapBMListingToUnified));
