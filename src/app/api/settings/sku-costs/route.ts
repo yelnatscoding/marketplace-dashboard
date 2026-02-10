@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSkuCosts, setSkuCosts, getDefaultSkuCosts } from "@/lib/storage/cookies";
+import { getSkuCosts, getDefaultSkuCosts } from "@/lib/storage/cookies";
+import { encrypt } from "@/lib/utils/crypto";
+
+const COOKIE_OPTS = {
+  httpOnly: true,
+  secure: true,
+  sameSite: "lax" as const,
+  maxAge: 60 * 60 * 24 * 365,
+  path: "/",
+};
 
 export async function GET() {
   const costs = await getSkuCosts();
@@ -31,8 +40,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  await setSkuCosts(costs);
-  return NextResponse.json({ success: true });
+  const response = NextResponse.json({ success: true });
+  response.cookies.set("sku_costs", encrypt(JSON.stringify(costs)), COOKIE_OPTS);
+  return response;
 }
 
 export async function DELETE(req: NextRequest) {
@@ -45,14 +55,17 @@ export async function DELETE(req: NextRequest) {
 
   const costs = await getSkuCosts();
   const filtered = costs.filter((c) => c.id !== parseInt(id));
-  await setSkuCosts(filtered);
 
-  return NextResponse.json({ success: true });
+  const response = NextResponse.json({ success: true });
+  response.cookies.set("sku_costs", encrypt(JSON.stringify(filtered)), COOKIE_OPTS);
+  return response;
 }
 
 // Seed — reset to defaults
 export async function PUT() {
   const defaults = getDefaultSkuCosts();
-  await setSkuCosts(defaults);
-  return NextResponse.json({ seeded: defaults.length });
+
+  const response = NextResponse.json({ seeded: defaults.length });
+  response.cookies.set("sku_costs", encrypt(JSON.stringify(defaults)), COOKIE_OPTS);
+  return response;
 }

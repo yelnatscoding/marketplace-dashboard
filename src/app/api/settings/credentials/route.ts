@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getMLCredentials,
   getBMCredentials,
-  setBMCredentials,
-  deleteMLCredentials,
-  deleteBMCredentials,
 } from "@/lib/storage/cookies";
+import { encrypt } from "@/lib/utils/crypto";
 
 export async function GET() {
   const mlCred = await getMLCredentials();
@@ -49,12 +47,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  await setBMCredentials({
+  const cred = {
     accessToken: token,
     tokenExpiresAt: Date.now() + 90 * 24 * 60 * 60 * 1000,
+  };
+
+  const response = NextResponse.json({ success: true });
+  response.cookies.set("bm_credentials", encrypt(JSON.stringify(cred)), {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 90,
+    path: "/",
   });
 
-  return NextResponse.json({ success: true });
+  return response;
 }
 
 export async function DELETE(req: NextRequest) {
@@ -65,11 +72,13 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "platform is required" }, { status: 400 });
   }
 
+  const response = NextResponse.json({ success: true });
+
   if (platform === "mercadolibre") {
-    await deleteMLCredentials();
+    response.cookies.delete("ml_credentials");
   } else if (platform === "backmarket") {
-    await deleteBMCredentials();
+    response.cookies.delete("bm_credentials");
   }
 
-  return NextResponse.json({ success: true });
+  return response;
 }
