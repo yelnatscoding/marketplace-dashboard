@@ -20,6 +20,7 @@ export class BackMarketClient {
         Authorization: `Basic ${token}`,
         "Content-Type": "application/json",
         Accept: "application/json",
+        "Accept-Language": "en-us",
         ...options?.headers,
       },
     });
