@@ -24,9 +24,8 @@ export async function createCostLookup(): Promise<(sku: string) => number> {
       if (mpnMatch) return mpnMatch.cost;
     }
 
-    // 3. Parse size+connectivity from BM-style SKUs and match
+    // 3. Parse size+connectivity from BM-style Watch SKUs
     // e.g. "GPS-42-ALUM-JET BLACK-ASIS" → size=42mm, connectivity=GPS
-    // e.g. "CELL-46-ALUM-JET BLACK-ASIS" → size=46mm, connectivity=Cell
     const upper = sku.toUpperCase();
     let skuConnectivity = "";
     let skuSize = "";
@@ -42,6 +41,28 @@ export async function createCostLookup(): Promise<(sku: string) => number> {
         (s) => s.size === skuSize && s.connectivity === skuConnectivity
       );
       if (sizeConnMatch) return sizeConnMatch.cost;
+    }
+
+    // 4. Parse iPhone model+storage from SKU or title
+    // Handles: "ASIS-128-BLACK-IPHONE13", "iPhone 13 128GB", etc.
+    const iphoneModelMatch = upper.match(/IPHONE[\s\-_]*(\d{2})/);
+    if (iphoneModelMatch) {
+      const model = iphoneModelMatch[1]; // "11", "12", "13"
+      // Try explicit "128GB" style first
+      const storageGBMatch = upper.match(/(\d{2,3})\s*GB/);
+      if (storageGBMatch) {
+        const key = `IPHONE${model}-${storageGBMatch[1]}GB`;
+        const iphoneMatch = costs.find((s) => s.mpn === key);
+        if (iphoneMatch) return iphoneMatch.cost;
+      }
+      // Fallback: look for known storage sizes without GB suffix
+      for (const size of ["256", "128", "64"]) {
+        if (upper.includes(size)) {
+          const key = `IPHONE${model}-${size}GB`;
+          const iphoneMatch = costs.find((s) => s.mpn === key);
+          if (iphoneMatch) return iphoneMatch.cost;
+        }
+      }
     }
 
     return 0;
