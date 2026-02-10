@@ -77,10 +77,10 @@ export class MercadoLibreClient {
     return String(me.id);
   }
 
-  async getItems(): Promise<string[]> {
+  async getItems(status: string = "active"): Promise<string[]> {
     const userId = await this.getUserId();
     const result = await this.request<{ results: string[] }>(
-      `/users/${userId}/items/search?limit=100`
+      `/users/${userId}/items/search?status=${status}&limit=100`
     );
     return result.results;
   }
