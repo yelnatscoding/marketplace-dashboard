@@ -173,8 +173,8 @@ export class MercadoLibreClient {
     price: number,
     categoryId: string,
     listingTypeId: string
-  ): Promise<MLListingFee[]> {
-    return this.request<MLListingFee[]>(
+  ): Promise<MLListingFee> {
+    return this.request<MLListingFee>(
       `/sites/MLM/listing_prices?price=${price}&category_id=${categoryId}&listing_type_id=${listingTypeId}`
     );
   }
