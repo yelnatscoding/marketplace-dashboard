@@ -24,7 +24,7 @@ export async function GET() {
 
   if (await isPlatformConnected("backmarket")) {
     try {
-      const bmRes = await bmClient.getOrders();
+      const bmRes = await bmClient.getAllOrders();
       orders.push(
         ...(bmRes.results || []).map((o) => mapBMOrderToUnified(o, getCostForSku))
       );

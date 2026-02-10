@@ -26,7 +26,7 @@ export async function GET() {
 
   if (await isPlatformConnected("backmarket")) {
     try {
-      const res = await bmClient.getListings();
+      const res = await bmClient.getAllListings();
       listings.push(...(res.results || []).map(mapBMListingToUnified));
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

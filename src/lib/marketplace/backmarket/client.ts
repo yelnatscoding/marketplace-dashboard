@@ -38,6 +38,32 @@ export class BackMarketClient {
     return this.request<BMListingsResponse>(`/listings?page=${page}`);
   }
 
+  async getAllListings(): Promise<BMListingsResponse> {
+    const all: BMListing[] = [];
+    let page = 1;
+    let hasNext = true;
+    while (hasNext) {
+      const res = await this.getListings({ page });
+      all.push(...(res.results || []));
+      hasNext = !!res.next;
+      page++;
+    }
+    return { count: all.length, next: null, previous: null, results: all };
+  }
+
+  async getAllOrders(): Promise<BMOrdersResponse> {
+    const all: BMOrder[] = [];
+    let page = 1;
+    let hasNext = true;
+    while (hasNext) {
+      const res = await this.getOrders({ page });
+      all.push(...(res.results || []));
+      hasNext = !!res.next;
+      page++;
+    }
+    return { count: all.length, next: null, previous: null, results: all };
+  }
+
   async getListing(listingId: string) {
     return this.request<BMListingDetail>(`/listings/${listingId}`);
   }
