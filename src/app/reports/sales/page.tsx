@@ -33,7 +33,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { exportToCsv } from "@/lib/utils/csv-export";
 import type { SalesReportSummary } from "@/lib/reports/sales-report";
 
-type Period = "week" | "month" | "all";
+type Period = "week" | "biweekly" | "month" | "quarter" | "year" | "all" | "custom";
 
 function getDateRange(period: Period): { from?: string; to?: string } {
   const now = new Date();
@@ -42,9 +42,24 @@ function getDateRange(period: Period): { from?: string; to?: string } {
     from.setDate(from.getDate() - 7);
     return { from: from.toISOString(), to: now.toISOString() };
   }
+  if (period === "biweekly") {
+    const from = new Date(now);
+    from.setDate(from.getDate() - 14);
+    return { from: from.toISOString(), to: now.toISOString() };
+  }
   if (period === "month") {
     const from = new Date(now);
     from.setMonth(from.getMonth() - 1);
+    return { from: from.toISOString(), to: now.toISOString() };
+  }
+  if (period === "quarter") {
+    const from = new Date(now);
+    from.setMonth(from.getMonth() - 3);
+    return { from: from.toISOString(), to: now.toISOString() };
+  }
+  if (period === "year") {
+    const from = new Date(now);
+    from.setFullYear(from.getFullYear() - 1);
     return { from: from.toISOString(), to: now.toISOString() };
   }
   return {};
@@ -55,14 +70,22 @@ type PlatformFilter = "all" | "mercadolibre" | "backmarket";
 export default function SalesReportPage() {
   const [period, setPeriod] = useState<Period>("month");
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
-  const range = getDateRange(period);
+  const range =
+    period === "custom" && customFrom
+      ? {
+          from: new Date(customFrom).toISOString(),
+          to: customTo ? new Date(customTo + "T23:59:59").toISOString() : new Date().toISOString(),
+        }
+      : getDateRange(period);
   const params = new URLSearchParams();
   if (range.from) params.set("from", range.from);
   if (range.to) params.set("to", range.to);
 
   const { data: fullReport, isLoading } = useQuery<SalesReportSummary>({
-    queryKey: ["sales-report", period],
+    queryKey: ["sales-report", period, customFrom, customTo],
     queryFn: () =>
       fetch(`/api/reports/sales?${params}`).then((r) => r.json()),
   });
@@ -119,8 +142,12 @@ export default function SalesReportPage() {
 
   const periodLabel: Record<Period, string> = {
     week: "Weekly",
+    biweekly: "Bi-Weekly",
     month: "Monthly",
+    quarter: "Quarterly",
+    year: "Yearly",
     all: "All-Time",
+    custom: "Custom",
   };
 
   return (
@@ -147,13 +174,17 @@ export default function SalesReportPage() {
               value={period}
               onValueChange={(v) => setPeriod(v as Period)}
             >
-              <SelectTrigger className="w-[130px]">
+              <SelectTrigger className="w-[140px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="week">Weekly</SelectItem>
+                <SelectItem value="biweekly">Bi-Weekly</SelectItem>
                 <SelectItem value="month">Monthly</SelectItem>
+                <SelectItem value="quarter">Quarterly</SelectItem>
+                <SelectItem value="year">Yearly</SelectItem>
                 <SelectItem value="all">All-Time</SelectItem>
+                <SelectItem value="custom">Custom Range</SelectItem>
               </SelectContent>
             </Select>
             <Button
@@ -168,6 +199,29 @@ export default function SalesReportPage() {
           </div>
         }
       />
+
+      {period === "custom" && (
+        <div className="flex items-center gap-3 mb-6">
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1">From</label>
+            <Input
+              type="date"
+              value={customFrom}
+              onChange={(e) => setCustomFrom(e.target.value)}
+              className="w-[160px]"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1">To</label>
+            <Input
+              type="date"
+              value={customTo}
+              onChange={(e) => setCustomTo(e.target.value)}
+              className="w-[160px]"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-4 mb-6">

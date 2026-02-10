@@ -176,6 +176,8 @@ export default function ListingsPage() {
               <TableHead>Title</TableHead>
               <TableHead>SKU</TableHead>
               <TableHead className="text-right">Price</TableHead>
+              <TableHead className="text-right">Min Price</TableHead>
+              <TableHead className="text-right">Max Price</TableHead>
               <TableHead className="text-right">Stock</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-20"></TableHead>
@@ -185,7 +187,7 @@ export default function ListingsPage() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={9}>
                     <Skeleton className="h-10 w-full" />
                   </TableCell>
                 </TableRow>
@@ -193,7 +195,7 @@ export default function ListingsPage() {
             ) : filtered.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={9}
                   className="text-center py-12 text-muted-foreground"
                 >
                   {listings.length === 0
@@ -236,6 +238,16 @@ export default function ListingsPage() {
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatCurrency(listing.price, listing.currency)}
+                  </TableCell>
+                  <TableCell className="text-right text-sm text-muted-foreground">
+                    {listing.minPrice != null
+                      ? formatCurrency(listing.minPrice, listing.currency)
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-right text-sm text-muted-foreground">
+                    {listing.maxPrice != null
+                      ? formatCurrency(listing.maxPrice, listing.currency)
+                      : "-"}
                   </TableCell>
                   <TableCell className="text-right">
                     {listing.stock}

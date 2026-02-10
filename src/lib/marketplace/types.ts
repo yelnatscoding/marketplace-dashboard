@@ -17,6 +17,8 @@ export interface UnifiedListing {
   connectivity?: string;
   color?: string;
   updatedAt?: string;
+  minPrice?: number | null;
+  maxPrice?: number | null;
 }
 
 export interface UnifiedOrder {

@@ -31,6 +31,8 @@ export function mapBMListingToUnified(listing: BMListing): UnifiedListing {
     size: parseSizeFromTitle(listing.title),
     connectivity: parseConnectivityFromTitle(listing.title),
     color: parseColorFromTitle(listing.title),
+    minPrice: listing.min_price,
+    maxPrice: listing.max_price,
   };
 }
 
