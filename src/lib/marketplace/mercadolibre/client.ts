@@ -168,6 +168,16 @@ export class MercadoLibreClient {
   async getOrder(orderId: string) {
     return this.request<MLOrder>(`/orders/${orderId}`);
   }
+
+  async getListingFees(
+    price: number,
+    categoryId: string,
+    listingTypeId: string
+  ): Promise<MLListingFee[]> {
+    return this.request<MLListingFee[]>(
+      `/sites/MLM/listing_prices?price=${price}&category_id=${categoryId}&listing_type_id=${listingTypeId}`
+    );
+  }
 }
 
 // ML API types
@@ -181,6 +191,8 @@ export interface MLItem {
   status: string;
   permalink: string;
   thumbnail: string;
+  category_id: string;
+  listing_type_id: string;
   seller_custom_field: string | null;
   attributes: { id: string; name: string; value_name: string }[];
   variations: {
@@ -190,6 +202,13 @@ export interface MLItem {
   }[];
   date_created: string;
   last_updated: string;
+}
+
+export interface MLListingFee {
+  listing_type_id: string;
+  listing_type_name: string;
+  sale_fee_amount: number;
+  currency_id: string;
 }
 
 export interface MLOrder {

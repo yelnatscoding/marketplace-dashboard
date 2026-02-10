@@ -17,69 +17,34 @@ export async function GET() {
         const items = await mlClient.getItemsBatch(itemIds);
         const mlListings = items.map(mapMLItemToListing);
 
-        // Calculate avg ML fee rate from recent orders to estimate net payout
-        let feeRate = 0;
-        let feeDebug = "";
-        try {
-          const ordersRes = await mlClient.searchOrders({ limit: 50 });
-          let totalAmount = 0;
-          let totalFees = 0;
-          let usedOrders = 0;
-
-          // Dump first order's payment structure for debugging
-          const sampleOrder = ordersRes.results[0];
-          if (sampleOrder) {
-            feeDebug = JSON.stringify({
-              orderId: sampleOrder.id,
-              status: sampleOrder.status,
-              total_amount: sampleOrder.total_amount,
-              paymentsCount: sampleOrder.payments?.length ?? "null",
-              firstPayment: sampleOrder.payments?.[0] ?? "none",
-              totalOrders: ordersRes.results.length,
-            });
-          }
-
-          for (const o of ordersRes.results) {
-            if (o.total_amount > 0 && o.payments && o.payments.length > 0) {
-              const orderFees = o.payments.reduce(
-                (s, p) => s + (p.marketplace_fee || 0),
-                0
-              );
-              const paidAmount = o.payments.reduce(
-                (s, p) => s + (p.total_paid_amount || 0),
-                0
-              );
-
-              if (orderFees > 0) {
-                totalFees += orderFees;
-                totalAmount += o.total_amount;
-                usedOrders++;
-              } else if (paidAmount > 0 && paidAmount !== o.total_amount) {
-                totalFees += Math.abs(paidAmount - o.total_amount);
-                totalAmount += o.total_amount;
-                usedOrders++;
+        // Calculate net payout per listing using ML fee calculator API
+        // Use first item's category to get the fee structure, then apply per-price
+        const sampleItem = items[0];
+        const feeCache = new Map<number, number>(); // price → fee amount
+        if (sampleItem?.category_id && sampleItem?.listing_type_id) {
+          for (const listing of mlListings) {
+            try {
+              // Check cache first (many items may share a price)
+              if (feeCache.has(listing.price)) {
+                listing.netPayout = Math.round((listing.price - feeCache.get(listing.price)!) * 100) / 100;
+                continue;
               }
+              const fees = await mlClient.getListingFees(
+                listing.price,
+                sampleItem.category_id,
+                sampleItem.listing_type_id
+              );
+              const matchingFee = fees.find(
+                (f) => f.listing_type_id === sampleItem.listing_type_id
+              );
+              if (matchingFee) {
+                feeCache.set(listing.price, matchingFee.sale_fee_amount);
+                listing.netPayout = Math.round((listing.price - matchingFee.sale_fee_amount) * 100) / 100;
+              }
+            } catch {
+              // If fee calc fails for one listing, skip it
             }
           }
-
-          if (totalAmount > 0) {
-            feeRate = totalFees / totalAmount;
-          }
-
-          feeDebug += ` | used=${usedOrders} totalAmt=${totalAmount} totalFees=${totalFees} rate=${(feeRate * 100).toFixed(1)}%`;
-        } catch (e) {
-          feeDebug = `error: ${e instanceof Error ? e.message : String(e)}`;
-        }
-
-        if (feeDebug) {
-          errors.push(`[debug] ML fee: ${feeDebug}`);
-        }
-
-        // Apply net payout estimate to each listing
-        for (const listing of mlListings) {
-          listing.netPayout = feeRate > 0
-            ? Math.round((listing.price * (1 - feeRate)) * 100) / 100
-            : null;
         }
 
         listings.push(...mlListings);
