@@ -24,12 +24,12 @@ export interface SkuCost {
 
 const DEFAULT_SKU_COSTS: SkuCost[] = [
   // Apple Watch SE2
-  { id: 1, mpn: "4WWA3LW/A", cost: 244, size: "42mm", connectivity: "GPS", description: "42mm GPS Aluminum" },
-  { id: 2, mpn: "4WWF3LW/A", cost: 244, size: "42mm", connectivity: "GPS", description: "42mm GPS Aluminum" },
-  { id: 3, mpn: "4WWJ3LW/A", cost: 244, size: "42mm", connectivity: "GPS", description: "42mm GPS Aluminum" },
-  { id: 4, mpn: "4WXA3LW/A", cost: 274, size: "42mm", connectivity: "Cell", description: "42mm Cell Aluminum" },
-  { id: 5, mpn: "4WY03LW/A", cost: 290, size: "46mm", connectivity: "Cell", description: "46mm Cell Aluminum" },
-  { id: 6, mpn: "4WY33LW/A", cost: 290, size: "46mm", connectivity: "Cell", description: "46mm Cell Aluminum" },
+  { id: 1, mpn: "4WWA3LW/A", cost: 221, size: "42mm", connectivity: "GPS", description: "42mm GPS Aluminum Silver" },
+  { id: 2, mpn: "4WWF3LW/A", cost: 221, size: "42mm", connectivity: "GPS", description: "42mm GPS Aluminum Rose Gold" },
+  { id: 3, mpn: "4WWJ3LW/A", cost: 221, size: "42mm", connectivity: "GPS", description: "42mm GPS Aluminum Jet Black" },
+  { id: 4, mpn: "4WXA3LW/A", cost: 223, size: "42mm", connectivity: "Cell", description: "42mm Cell Aluminum Rose Gold" },
+  { id: 5, mpn: "4WY03LW/A", cost: 234, size: "46mm", connectivity: "Cell", description: "46mm Cell Aluminum Silver" },
+  { id: 6, mpn: "4WY33LW/A", cost: 234, size: "46mm", connectivity: "Cell", description: "46mm Cell Aluminum Jet Black" },
   // iPhones
   { id: 7, mpn: "IPHONE11-64GB", cost: 156.87, size: "64GB", connectivity: null, description: "iPhone 11 64GB" },
   { id: 8, mpn: "IPHONE11-128GB", cost: 163.82, size: "128GB", connectivity: null, description: "iPhone 11 128GB" },
