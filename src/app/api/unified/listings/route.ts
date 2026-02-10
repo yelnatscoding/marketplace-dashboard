@@ -17,23 +17,34 @@ export async function GET() {
         const items = await mlClient.getItemsBatch(itemIds);
         const mlListings = items.map(mapMLItemToListing);
 
-        // Calculate avg ML fee rate from recent paid orders to estimate net payout
+        // Calculate avg ML fee rate from recent orders to estimate net payout
         let feeRate = 0;
+        let feeDebug = "";
         try {
           const ordersRes = await mlClient.searchOrders({ limit: 50 });
           let totalAmount = 0;
           let totalFees = 0;
           let usedOrders = 0;
 
+          // Dump first order's payment structure for debugging
+          const sampleOrder = ordersRes.results[0];
+          if (sampleOrder) {
+            feeDebug = JSON.stringify({
+              orderId: sampleOrder.id,
+              status: sampleOrder.status,
+              total_amount: sampleOrder.total_amount,
+              paymentsCount: sampleOrder.payments?.length ?? "null",
+              firstPayment: sampleOrder.payments?.[0] ?? "none",
+              totalOrders: ordersRes.results.length,
+            });
+          }
+
           for (const o of ordersRes.results) {
-            // Only use paid/delivered orders (skip cancelled, pending)
             if (o.total_amount > 0 && o.payments && o.payments.length > 0) {
               const orderFees = o.payments.reduce(
                 (s, p) => s + (p.marketplace_fee || 0),
                 0
               );
-              // Also try: total_paid_amount - total_amount as a fee proxy
-              // ML sometimes has fees in total_paid vs total difference
               const paidAmount = o.payments.reduce(
                 (s, p) => s + (p.total_paid_amount || 0),
                 0
@@ -44,7 +55,6 @@ export async function GET() {
                 totalAmount += o.total_amount;
                 usedOrders++;
               } else if (paidAmount > 0 && paidAmount !== o.total_amount) {
-                // Fallback: infer fees from paid vs total difference
                 totalFees += Math.abs(paidAmount - o.total_amount);
                 totalAmount += o.total_amount;
                 usedOrders++;
@@ -56,11 +66,13 @@ export async function GET() {
             feeRate = totalFees / totalAmount;
           }
 
-          console.log(
-            `ML fee calc: ${usedOrders} orders used, totalAmount=${totalAmount}, totalFees=${totalFees}, feeRate=${(feeRate * 100).toFixed(1)}%`
-          );
+          feeDebug += ` | used=${usedOrders} totalAmt=${totalAmount} totalFees=${totalFees} rate=${(feeRate * 100).toFixed(1)}%`;
         } catch (e) {
-          console.error("ML fee calculation error:", e);
+          feeDebug = `error: ${e instanceof Error ? e.message : String(e)}`;
+        }
+
+        if (feeDebug) {
+          errors.push(`[debug] ML fee: ${feeDebug}`);
         }
 
         // Apply net payout estimate to each listing
